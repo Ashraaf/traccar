@@ -32,7 +32,7 @@ public class IotmProtocol extends BaseProtocol {
             @Override
             protected void addProtocolHandlers(PipelineBuilder pipeline, Config config) {
                 pipeline.addLast(MqttEncoder.INSTANCE);
-                pipeline.addLast(new MqttDecoder());
+                pipeline.addLast(new MqttDecoder(256 * 1024)); // 256KB max payload size
                 pipeline.addLast(new IotmProtocolDecoder(IotmProtocol.this));
             }
         });

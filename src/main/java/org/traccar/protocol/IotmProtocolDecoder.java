@@ -18,6 +18,8 @@ package org.traccar.protocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.traccar.BaseMqttProtocolDecoder;
 import org.traccar.Protocol;
 import org.traccar.helper.UnitsConverter;
@@ -30,6 +32,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(IotmProtocolDecoder.class);
 
     public IotmProtocolDecoder(Protocol protocol) {
         super(protocol);
@@ -131,66 +135,72 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
 
         List<Position> positions = new LinkedList<>();
 
-        ByteBuf buf = message.payload();
+        try {
+            ByteBuf buf = message.payload();
 
-        buf.readUnsignedByte(); // structure version
+            buf.readUnsignedByte(); // structure version
 
-        while (buf.readableBytes() > 1) {
-            int type = buf.readUnsignedByte();
-            int length = buf.readUnsignedShortLE();
-            ByteBuf record = buf.readSlice(length);
-            if (type == 1) {
+            while (buf.readableBytes() > 1) {
+                int type = buf.readUnsignedByte();
+                int length = buf.readUnsignedShortLE();
+                ByteBuf record = buf.readSlice(length);
+                if (type == 1) {
 
-                Position position = new Position(getProtocolName());
-                position.setDeviceId(deviceSession.getDeviceId());
-                position.setTime(new Date(record.readUnsignedIntLE() * 1000));
+                    Position position = new Position(getProtocolName());
+                    position.setDeviceId(deviceSession.getDeviceId());
+                    position.setTime(new Date(record.readUnsignedIntLE() * 1000));
+                    position.setValid(true); // Always assume valid
 
-                while (record.readableBytes() > 0) {
-                    int sensorType = record.readUnsignedByte();
-                    int sensorId = record.readUnsignedShortLE();
-                    if (sensorType == 14) {
+                    while (record.readableBytes() > 0) {
+                        int sensorType = record.readUnsignedByte();
+                        int sensorId = record.readUnsignedShortLE();
+                        if (sensorType == 14) {
 
-                        position.setValid(true);
-                        position.setLatitude(record.readFloatLE());
-                        position.setLongitude(record.readFloatLE());
-                        position.setSpeed(UnitsConverter.knotsFromKph(record.readUnsignedShortLE()));
+                            position.setLatitude(record.readFloatLE());
+                            position.setLongitude(record.readFloatLE());
+                            position.setSpeed(UnitsConverter.knotsFromKph(record.readUnsignedShortLE()));
 
-                        position.set(Position.KEY_HDOP, record.readUnsignedByte());
-                        position.set(Position.KEY_SATELLITES, record.readUnsignedByte());
+                            position.set(Position.KEY_HDOP, record.readUnsignedByte() * 0.1);
+                            position.set(Position.KEY_SATELLITES, record.readUnsignedByte());
 
-                        position.setCourse(record.readUnsignedShortLE());
-                        position.setAltitude(record.readShortLE());
+                            position.setCourse(record.readUnsignedShortLE());
+                            position.setAltitude(record.readShortLE());
 
-                    } else {
+                        } else {
 
-                        if (sensorType == 3) {
-                            continue;
+                            if (sensorType == 3) {
+                                continue;
+                            }
+
+                            decodeSensor(position, record, sensorType, sensorId);
+
                         }
-
-                        decodeSensor(position, record, sensorType, sensorId);
-
                     }
+
+                    positions.add(position);
+
+                } else if (type == 3) {
+
+                    Position position = new Position(getProtocolName());
+                    position.setDeviceId(deviceSession.getDeviceId());
+
+                    getLastLocation(position, new Date(record.readUnsignedIntLE() * 1000));
+
+                    record.readUnsignedByte(); // function identifier
+
+                    position.set(Position.KEY_EVENT, record.readUnsignedByte());
+
+                    positions.add(position);
+
                 }
-
-                positions.add(position);
-
-            } else if (type == 3) {
-
-                Position position = new Position(getProtocolName());
-                position.setDeviceId(deviceSession.getDeviceId());
-
-                getLastLocation(position, new Date(record.readUnsignedIntLE() * 1000));
-
-                record.readUnsignedByte(); // function identifier
-
-                position.set(Position.KEY_EVENT, record.readUnsignedByte());
-
-                positions.add(position);
-
             }
-        }
 
-        buf.readUnsignedByte(); // checksum
+            buf.readUnsignedByte(); // checksum
+
+        } catch (Exception e) {
+            LOGGER.warn("Failed to decode IOTM message from device: " + deviceSession.getUniqueId(), e);
+            return null;
+        }
 
         return positions.isEmpty() ? null : positions;
     }

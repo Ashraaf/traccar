@@ -1,5 +1,5 @@
 FROM alpine AS package
-ARG VERSION
+ARG VERSION=master
 COPY installers/traccar-other-$VERSION.zip /tmp/traccar.zip
 RUN unzip -qo /tmp/traccar.zip -d /traccar
 
