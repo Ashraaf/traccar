@@ -13,3 +13,4 @@ build
 .vscode
 bin
 docker/installers/*.zip
+setup/*.zip
