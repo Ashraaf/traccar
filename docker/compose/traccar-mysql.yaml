@@ -9,13 +9,21 @@ services:
       MYSQL_USER: traccar
       MYSQL_PASSWORD: traccar
     volumes:
-      - /opt/traccar/data:/var/lib/mysql
+      - ./local-data/mysql/data:/var/lib/mysql
 
-  traccar:
-    image: traccar/traccar:latest
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    command: redis-server --requirepass ABC123mysql --appendonly no --save "" --io-threads 15 --io-threads-do-reads yes --maxmemory 1gb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --replica-lazy-flush yes --lazyfree-lazy-user-del yes --lazyfree-lazy-user-flush yes
+    ports:
+      - "6379:6379"
+
+  traccar-primary:
+    image: traccar:3e1eb38-iotmfix
     restart: unless-stopped
     depends_on:
       - database
+      - redis
     environment:
       CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
       DATABASE_DRIVER: com.mysql.cj.jdbc.Driver
@@ -32,6 +40,8 @@ services:
         &sessionVariables=sql_mode=''
       DATABASE_USER: traccar
       DATABASE_PASSWORD: traccar
+      BROADCAST_TYPE : redis
+      BROADCAST_ADDRESS : redis://:ABC123mysql@redis:6379
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
       interval: 2m
@@ -40,9 +50,44 @@ services:
       retries: 3
     ports:
       - "8082:8082"
-      - "5000-5500:5000-5500"
+      - "5055:5055"
     volumes:
-      - /opt/traccar/logs:/opt/traccar/logs
+      - ./local-data/mysql/traccar-primary/logs:/opt/traccar/logs
+
+  traccar-secondary:
+    image: traccar:3e1eb38-iotmfix
+    restart: unless-stopped
+    depends_on:
+      - database
+      - redis
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: com.mysql.cj.jdbc.Driver
+      DATABASE_URL: >-
+        jdbc:mysql://database:3306/traccar
+        ?zeroDateTimeBehavior=round
+        &serverTimezone=UTC
+        &allowPublicKeyRetrieval=true
+        &useSSL=false
+        &allowMultiQueries=true
+        &autoReconnect=true
+        &useUnicode=yes
+        &characterEncoding=UTF-8
+        &sessionVariables=sql_mode=''
+      DATABASE_USER: traccar
+      DATABASE_PASSWORD: traccar
+      BROADCAST_TYPE : redis
+      BROADCAST_ADDRESS : redis://:ABC123mysql@redis:6379
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
+      interval: 2m
+      timeout: 5s
+      start_period: 1h
+      retries: 3
+    ports:
+      - "8083:8082"
+    volumes:
+      - ./local-data/mysql/traccar-secondary/logs:/opt/traccar/logs
 
   autoheal:
     image: willfarrell/autoheal:latest

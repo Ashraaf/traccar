@@ -1,7 +1,7 @@
 services:
 
   database:
-    image: timescale/timescaledb:latest-pg16
+    image: timescale/timescaledb:latest-pg17
     restart: unless-stopped
     environment:
       POSTGRES_DB: traccar
@@ -9,19 +9,29 @@ services:
       POSTGRES_PASSWORD: traccar
       TIMESCALEDB_TELEMETRY: "off"
     volumes:
-      - /opt/traccar/data:/var/lib/postgresql/data
+      - ./local-data/timescaledb/data:/var/lib/postgresql/data
 
-  traccar:
-    image: traccar/traccar:latest
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    command: redis-server --requirepass ABC123timescaledb --appendonly no --save "" --io-threads 15 --io-threads-do-reads yes --maxmemory 1gb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --replica-lazy-flush yes --lazyfree-lazy-user-del yes --lazyfree-lazy-user-flush yes
+    ports:
+      - "6379:6379"
+
+  traccar-primary:
+    image: traccar:3e1eb38-iotmfix
     restart: unless-stopped
     depends_on:
       - database
+      - redis
     environment:
       CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
       DATABASE_DRIVER: org.postgresql.Driver
       DATABASE_URL: jdbc:postgresql://database:5432/traccar
       DATABASE_USER: traccar
       DATABASE_PASSWORD: traccar
+      BROADCAST_TYPE : redis
+      BROADCAST_ADDRESS : redis://:ABC123timescaledb@redis:6379
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
       interval: 2m
@@ -30,9 +40,34 @@ services:
       retries: 3
     ports:
       - "8082:8082"
-      - "5000-5500:5000-5500"
+      - "5055:5055"
     volumes:
-      - /opt/traccar/logs:/opt/traccar/logs
+      - ./local-data/timescaledb/traccar-primary/logs:/opt/traccar/logs
+
+  traccar-secondary:
+    image: traccar:3e1eb38-iotmfix
+    restart: unless-stopped
+    depends_on:
+      - database
+      - redis
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: org.postgresql.Driver
+      DATABASE_URL: jdbc:postgresql://database:5432/traccar
+      DATABASE_USER: traccar
+      DATABASE_PASSWORD: traccar
+      BROADCAST_TYPE : redis
+      BROADCAST_ADDRESS : redis://:ABC123timescaledb@redis:6379
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
+      interval: 2m
+      timeout: 5s
+      start_period: 1h
+      retries: 3
+    ports:
+      - "8083:8082"
+    volumes:
+      - ./local-data/timescaledb/traccar-secondary/logs:/opt/traccar/logs
 
   autoheal:
     image: willfarrell/autoheal:latest

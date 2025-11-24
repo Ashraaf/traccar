@@ -14,3 +14,4 @@ build
 bin
 docker/installers/*.zip
 setup/*.zip
+docker/compose/local-data
