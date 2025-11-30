@@ -19,7 +19,7 @@ services:
       - "6379:6379"
 
   traccar-primary:
-    image: traccar:30310bc-iotmfix
+    image: traccar:6f7a00c-iotmfix
     restart: unless-stopped
     depends_on:
       - database
@@ -42,6 +42,7 @@ services:
       DATABASE_PASSWORD: traccar
       BROADCAST_TYPE : redis
       BROADCAST_ADDRESS : redis://:ABC123mysql@redis:6379
+      SERVER_BUFFERING_THRESHOLD : 0
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
       interval: 2m
@@ -55,7 +56,7 @@ services:
       - ./local-data/mysql/traccar-primary/logs:/opt/traccar/logs
 
   traccar-secondary:
-    image: traccar:30310bc-iotmfix
+    image: traccar:6f7a00c-iotmfix
     restart: unless-stopped
     depends_on:
       - database
@@ -78,6 +79,7 @@ services:
       DATABASE_PASSWORD: traccar
       BROADCAST_TYPE : redis
       BROADCAST_ADDRESS : redis://:ABC123mysql@redis:6379
+      SERVER_BUFFERING_THRESHOLD : 0
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
       interval: 2m
