@@ -1,20 +1,19 @@
 services:
 
   database:
-    image: timescale/timescaledb:latest-pg18
+    image: postgres:18.1-trixie
     restart: unless-stopped
     environment:
       POSTGRES_DB: traccar
       POSTGRES_USER: traccar
       POSTGRES_PASSWORD: traccar
-      TIMESCALEDB_TELEMETRY: "off"
     volumes:
-      - ./local-data/timescaledb/data:/var/lib/postgresql/data
+      - ./local-data/postgresql/data:/var/lib/postgresql/data
 
   redis:
     image: redis:latest
     restart: unless-stopped
-    command: redis-server --requirepass ABC123timescaledb --appendonly no --save "" --io-threads 15 --io-threads-do-reads yes --maxmemory 1gb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --replica-lazy-flush yes --lazyfree-lazy-user-del yes --lazyfree-lazy-user-flush yes
+    command: redis-server --requirepass ABC123postgresql --appendonly no --save "" --io-threads 15 --io-threads-do-reads yes --maxmemory 1gb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --replica-lazy-flush yes --lazyfree-lazy-user-del yes --lazyfree-lazy-user-flush yes
     ports:
       - "6379:6379"
 
@@ -31,7 +30,7 @@ services:
       DATABASE_USER: traccar
       DATABASE_PASSWORD: traccar
       BROADCAST_TYPE : redis
-      BROADCAST_ADDRESS : redis://:ABC123timescaledb@redis:6379
+      BROADCAST_ADDRESS : redis://:ABC123postgresql@redis:6379
       SERVER_BUFFERING_THRESHOLD : 0
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
@@ -43,7 +42,7 @@ services:
       - "8082:8082"
       - "5055:5055"
     volumes:
-      - ./local-data/timescaledb/traccar-primary/logs:/opt/traccar/logs
+      - ./local-data/postgresql/traccar-primary/logs:/opt/traccar/logs
 
   # traccar-secondary:
   #   image: traccar:9362f6c-iotmfix
@@ -58,7 +57,7 @@ services:
   #     DATABASE_USER: traccar
   #     DATABASE_PASSWORD: traccar
   #     BROADCAST_TYPE : redis
-  #     BROADCAST_ADDRESS : redis://:ABC123timescaledb@redis:6379
+  #     BROADCAST_ADDRESS : redis://:ABC123postgresql@redis:6379
   #     SERVER_BUFFERING_THRESHOLD : 0
   #   healthcheck:
   #     test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
@@ -69,7 +68,7 @@ services:
   #   ports:
   #     - "8083:8082"
   #   volumes:
-  #     - ./local-data/timescaledb/traccar-secondary/logs:/opt/traccar/logs
+  #     - ./local-data/postgresql/traccar-secondary/logs:/opt/traccar/logs
 
   autoheal:
     image: willfarrell/autoheal:latest
