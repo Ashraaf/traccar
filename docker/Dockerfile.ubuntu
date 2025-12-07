@@ -12,5 +12,5 @@ FROM ubuntu:24.04
 COPY --from=package /traccar /opt/traccar
 COPY --from=jdk /jre /opt/traccar/jre
 WORKDIR /opt/traccar
-ENTRYPOINT ["/opt/traccar/jre/bin/java", "-XX:+UseContainerSupport", "-XX:ActiveProcessorCount=2", "-XX:InitialRAMPercentage=60", "-XX:MaxRAMPercentage=60", "-XX:+UseZGC", "-XX:-ZUncommit", "-XX:+AlwaysPreTouch", "-Djava.net.preferIPv4Stack=true"]
+ENTRYPOINT ["/opt/traccar/jre/bin/java", "-XX:+UseContainerSupport", "-XX:ActiveProcessorCount=2", "-XX:InitialRAMPercentage=25", "-XX:MaxRAMPercentage=75", "-XX:+UseZGC", "-XX:+UseStringDeduplication", "-Djava.net.preferIPv4Stack=true"]
 CMD ["-jar", "tracker-server.jar", "conf/traccar.xml"]

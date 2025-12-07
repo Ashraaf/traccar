@@ -44,31 +44,31 @@ services:
     volumes:
       - ./local-data/postgresql/traccar-primary/logs:/opt/traccar/logs
 
-  # traccar-secondary:
-  #   image: traccar:9362f6c-iotmfix
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - database
-  #     - redis
-  #   environment:
-  #     CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
-  #     DATABASE_DRIVER: org.postgresql.Driver
-  #     DATABASE_URL: jdbc:postgresql://database:5432/traccar
-  #     DATABASE_USER: traccar
-  #     DATABASE_PASSWORD: traccar
-  #     BROADCAST_TYPE : redis
-  #     BROADCAST_ADDRESS : redis://:ABC123postgresql@redis:6379
-  #     SERVER_BUFFERING_THRESHOLD : 0
-  #   healthcheck:
-  #     test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
-  #     interval: 2m
-  #     timeout: 5s
-  #     start_period: 1h
-  #     retries: 3
-  #   ports:
-  #     - "8083:8082"
-  #   volumes:
-  #     - ./local-data/postgresql/traccar-secondary/logs:/opt/traccar/logs
+  traccar-secondary:
+    image: traccar:9362f6c-iotmfix
+    restart: unless-stopped
+    depends_on:
+      - database
+      - redis
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: org.postgresql.Driver
+      DATABASE_URL: jdbc:postgresql://database:5432/traccar
+      DATABASE_USER: traccar
+      DATABASE_PASSWORD: traccar
+      BROADCAST_TYPE : redis
+      BROADCAST_ADDRESS : redis://:ABC123postgresql@redis:6379
+      SERVER_BUFFERING_THRESHOLD : 0
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
+      interval: 2m
+      timeout: 5s
+      start_period: 1h
+      retries: 3
+    ports:
+      - "8083:8082"
+    volumes:
+      - ./local-data/postgresql/traccar-secondary/logs:/opt/traccar/logs
 
   autoheal:
     image: willfarrell/autoheal:latest
