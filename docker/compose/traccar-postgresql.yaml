@@ -18,7 +18,7 @@ services:
       - "6379:6379"
 
   traccar-primary:
-    image: traccar:9362f6c-iotmfix
+    image: traccar:5b60ffc-iotmfix
     restart: unless-stopped
     depends_on:
       - database
@@ -45,7 +45,7 @@ services:
       - ./local-data/postgresql/traccar-primary/logs:/opt/traccar/logs
 
   traccar-secondary:
-    image: traccar:9362f6c-iotmfix
+    image: traccar:5b60ffc-iotmfix
     restart: unless-stopped
     depends_on:
       - database
