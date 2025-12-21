@@ -19,7 +19,7 @@ services:
       - "6379:6379"
 
   traccar-primary:
-    image: traccar:f49660f-1.0.1
+    image: traccar:49ea858-1.0.1
     restart: unless-stopped
     depends_on:
       - database
@@ -56,7 +56,7 @@ services:
       - ./local-data/mysql/traccar-primary/logs:/opt/traccar/logs
 
   traccar-secondary:
-    image: traccar:f49660f-1.0.1
+    image: traccar:49ea858-1.0.1
     restart: unless-stopped
     depends_on:
       - database
