@@ -7,6 +7,8 @@ services:
       POSTGRES_DB: traccar
       POSTGRES_USER: traccar
       POSTGRES_PASSWORD: traccar
+    ports:
+      - "5432:5432"
     volumes:
       - ./local-data/postgresql/data:/var/lib/postgresql
 
@@ -18,7 +20,7 @@ services:
       - "6379:6379"
 
   traccar-primary:
-    image: traccar:ce2b45e-1.0.2
+    image: traccar:ce2b45e-1.0.3
     restart: unless-stopped
     depends_on:
       - database
@@ -45,7 +47,7 @@ services:
       - ./local-data/postgresql/traccar-primary/logs:/opt/traccar/logs
 
   traccar-secondary:
-    image: traccar:ce2b45e-1.0.2
+    image: traccar:ce2b45e-1.0.3
     restart: unless-stopped
     depends_on:
       - database
