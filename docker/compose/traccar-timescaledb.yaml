@@ -19,7 +19,7 @@ services:
       - "6379:6379"
 
   traccar-primary:
-    image: traccar:e718b74-1.0.1
+    image: traccar:d8ad466-1.0.1
     restart: unless-stopped
     depends_on:
       - database
@@ -46,7 +46,7 @@ services:
       - ./local-data/timescaledb/traccar-primary/logs:/opt/traccar/logs
 
   traccar-secondary:
-    image: traccar:e718b74-1.0.1
+    image: traccar:d8ad466-1.0.1
     restart: unless-stopped
     depends_on:
       - database
