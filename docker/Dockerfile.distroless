@@ -3,7 +3,7 @@ ARG VERSION=master
 COPY installers/traccar-other-$VERSION.zip /tmp/traccar.zip
 RUN unzip -qo /tmp/traccar.zip -d /traccar
 
-FROM cgr.dev/chainguard/jdk:latest
+FROM gcr.io/distroless/java25-debian13:latest
 COPY --from=package /traccar /opt/traccar
 WORKDIR /opt/traccar
 ENTRYPOINT ["/usr/bin/java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70", "-XX:+UseZGC", "-XX:+UseStringDeduplication", "-Djava.net.preferIPv4Stack=true", "--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow"]
