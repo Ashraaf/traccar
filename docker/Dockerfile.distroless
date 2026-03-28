@@ -6,5 +6,5 @@ RUN unzip -qo /tmp/traccar.zip -d /traccar
 FROM gcr.io/distroless/java25-debian13:latest
 COPY --from=package /traccar /opt/traccar
 WORKDIR /opt/traccar
-ENTRYPOINT ["/usr/bin/java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70", "-XX:+UseZGC", "-XX:+UseStringDeduplication", "-Djava.net.preferIPv4Stack=true", "--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow"]
+ENTRYPOINT ["/usr/bin/java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70", "-XX:+UseZGC", "-XX:+UseStringDeduplication", "-XX:+UseCompactObjectHeaders", "-Djava.net.preferIPv4Stack=true", "--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow"]
 CMD ["-jar", "tracker-server.jar", "conf/traccar.xml"]
