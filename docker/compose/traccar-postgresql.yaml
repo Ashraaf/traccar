@@ -1,7 +1,7 @@
 services:
 
   database:
-    image: postgres:18.1-trixie
+    image: postgres:18-trixie
     restart: unless-stopped
     environment:
       POSTGRES_DB: traccar
