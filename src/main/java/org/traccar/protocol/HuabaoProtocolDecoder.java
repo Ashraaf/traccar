@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 - 2024 Anton Tananaev (anton@traccar.org)
+ * Copyright 2015 - 2026 Anton Tananaev (anton@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.traccar.Protocol;
 import org.traccar.helper.BcdUtil;
 import org.traccar.helper.BitUtil;
 import org.traccar.helper.Checksum;
+import org.traccar.helper.DataConverter;
 import org.traccar.helper.DateBuilder;
 import org.traccar.helper.UnitsConverter;
 import org.traccar.model.CellTower;
@@ -78,6 +79,8 @@ public class HuabaoProtocolDecoder extends BaseProtocolDecoder {
     public static final int MSG_CONFIGURATION_PARAMETERS = 0x8103;
     public static final int MSG_COMMAND_RESPONSE = 0x0701;
     public static final int MSG_DRIVER_IDENTITY = 0x0702;
+    public static final int MSG_VIDEO_REQUEST = 0x9101;
+    public static final int MSG_VIDEO_CONTROL = 0x9102;
 
     public static final int RESULT_SUCCESS = 0;
 
@@ -196,7 +199,7 @@ public class HuabaoProtocolDecoder extends BaseProtocolDecoder {
         return dateBuilder.getDate();
     }
 
-    private String decodeId(ByteBuf id) {
+    static String decodeId(ByteBuf id) {
         String serial = ByteBufUtil.hexDump(id);
         if (serial.matches("[0-9]+")) {
             return serial;
@@ -204,6 +207,18 @@ public class HuabaoProtocolDecoder extends BaseProtocolDecoder {
             long imei = id.getUnsignedShort(0);
             imei = (imei << 32) + id.getUnsignedInt(2);
             return String.valueOf(imei) + Checksum.luhn(imei);
+        }
+    }
+
+    static ByteBuf encodeId(String uniqueId) {
+        if (uniqueId.length() % 2 == 0) {
+            return Unpooled.wrappedBuffer(DataConverter.parseHex(uniqueId));
+        } else {
+            long imei = Long.parseLong(uniqueId.substring(0, uniqueId.length() - 1));
+            ByteBuf buf = Unpooled.buffer(6);
+            buf.writeShort((int) (imei >> 32));
+            buf.writeInt((int) imei);
+            return buf;
         }
     }
 
