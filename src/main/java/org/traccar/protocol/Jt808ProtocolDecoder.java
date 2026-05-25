@@ -862,18 +862,30 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                     }
                     position.set(Position.KEY_BATTERY_LEVEL, buf.readUnsignedByte());
                     break;
+                case 0xE5:
+                    if (length == 1) {
+                        position.set(Position.KEY_MOTION, buf.readUnsignedByte() == 1);
+                    }
+                    break;
                 case 0xE6:
-                    String header = buf.getCharSequence(buf.readerIndex(), 7, StandardCharsets.UTF_8).toString();
-                    if (header.equals("$OBD-RT")) {
+                    if (length >= 7 && buf.getCharSequence(
+                            buf.readerIndex(), 7, StandardCharsets.UTF_8).toString().equals("$OBD-RT")) {
                         String data = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
                         decodeObdRt(position, data);
-                    } else {
+                    } else if (length >= 11 && length % 11 == 0) {
                         while (buf.readerIndex() < endIndex) {
                             int sensorIndex = buf.readUnsignedByte();
                             buf.skipBytes(6); // mac
                             position.set(Position.PREFIX_TEMP + sensorIndex, decodeCustomDouble(buf));
                             position.set("humidity" + sensorIndex, decodeCustomDouble(buf));
                         }
+                    }
+                    break;
+                case 0xE7:
+                    if (length == 8) {
+                        alarm = buf.readUnsignedShort();
+                        position.addAlarm(BitUtil.check(alarm, 0) ? Position.ALARM_VIBRATION : null);
+                        position.addAlarm(BitUtil.between(alarm, 1, 4) != 0 ? Position.ALARM_SOS : null);
                     }
                     break;
                 case 0xE8:
@@ -1074,10 +1086,12 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                     position.set(Position.KEY_CARD, stringValue.trim());
                     break;
                 case 0xEE:
-                    position.set(Position.KEY_RSSI, buf.readUnsignedByte());
-                    position.set(Position.KEY_POWER, buf.readUnsignedShort() / 1000.0);
-                    position.set(Position.KEY_BATTERY, buf.readUnsignedShort() / 1000.0);
-                    position.set(Position.KEY_SATELLITES, buf.readUnsignedByte());
+                    if (length == 6) {
+                        position.set(Position.KEY_RSSI, buf.readUnsignedByte());
+                        position.set(Position.KEY_POWER, buf.readUnsignedShort() / 1000.0);
+                        position.set(Position.KEY_BATTERY, buf.readUnsignedShort() / 1000.0);
+                        position.set(Position.KEY_SATELLITES, buf.readUnsignedByte());
+                    }
                     break;
                 case 0xF1:
                     position.set(Position.KEY_POWER, buf.readUnsignedInt() / 1000.0);
