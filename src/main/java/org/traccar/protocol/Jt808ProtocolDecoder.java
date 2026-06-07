@@ -163,7 +163,7 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
         if (webUrl == null || uploadPort <= 0) {
             return;
         }
-        String text = String.format("VIDEOUPLOAD,%s,%d,%s,0,0",
+        String text = String.format("VIDEOUPLOAD,%s,%d,%s,1-2-3,2",
                 URI.create(webUrl).getHost(), uploadPort, position.getString("alarmLabel"));
         ByteBuf data = Unpooled.buffer();
         data.writeByte(0xF0);
@@ -862,6 +862,13 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                             position.set(Position.KEY_CHARGE, true);
                         } else {
                             position.set(Position.KEY_BATTERY_LEVEL, batteryLevel);
+                        }
+                    } else if (subtype == 0xE1 && length >= 12 && (length - 4) % 8 == 0) {
+                        int mcc = buf.readUnsignedShort();
+                        int mnc = buf.readUnsignedShort();
+                        while (buf.readerIndex() < endIndex) {
+                            network.addCellTower(CellTower.from(
+                                mcc, mnc, buf.readUnsignedMedium(), buf.readUnsignedInt(), buf.readUnsignedByte()));
                         }
                     } else {
                         position.set(Position.KEY_DRIVER_UNIQUE_ID, String.valueOf(buf.readUnsignedInt()));
