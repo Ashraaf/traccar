@@ -57,14 +57,11 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
             case 33 -> ByteBufUtil.hexDump(buf.readSlice(buf.readUnsignedByte()));
             case 64 -> buf.readCharSequence(buf.readUnsignedShortLE(), StandardCharsets.US_ASCII).toString();
             case 65 -> ByteBufUtil.hexDump(buf.readSlice(buf.readUnsignedShortLE()));
-            default -> {
-                LOGGER.warn("Unknown IOTM sensor type: {}", sensorType);
-                yield null;
-            }
+            default -> null;
         };
     }
 
-    private boolean decodeSensor(Position position, ByteBuf record, int sensorType, int sensorId) {
+    private void decodeSensor(Position position, ByteBuf record, int sensorType, int sensorId) {
         String key;
         switch (sensorId) {
             case 0x0002 -> position.set(Position.KEY_MOTION, sensorType > 0);
@@ -113,10 +110,9 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
             case 0x4063 -> position.set(Position.KEY_AXLE_WEIGHT, record.readUnsignedIntLE());
             case 0x5000 -> {
                 Object value = readValue(record, sensorType);
-                if (value == null) {
-                    return false;
+                if (value != null) {
+                    position.set(Position.KEY_DRIVER_UNIQUE_ID, value.toString());
                 }
-                position.set(Position.KEY_DRIVER_UNIQUE_ID, value.toString());
             }
             case 0x5004, 0x5005, 0x5006, 0x5007 -> {
                 key = Position.PREFIX_TEMP + (sensorId - 0x5004 + 1);
@@ -124,10 +120,9 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
             }
             case 0x500D -> {
                 Object value = readValue(record, sensorType);
-                if (value == null) {
-                    return false;
+                if (value != null) {
+                    position.set("trailerId", value.toString());
                 }
-                position.set("trailerId", value.toString());
             }
             case 0xA000 -> position.set(Position.KEY_DEVICE_TEMP, record.readFloatLE());
             case 0xA001 -> position.set(Position.KEY_ACCELERATION, record.readFloatLE());
@@ -138,15 +133,10 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
             }
             case 0xB002 -> position.set(Position.KEY_OBD_ODOMETER, record.readDoubleLE());
             default -> {
-                Object value = readValue(record, sensorType);
-                if (value == null) {
-                    return false;
-                }
                 key = Position.PREFIX_IO + sensorId;
-                position.getAttributes().put(key, value);
+                position.getAttributes().put(key, readValue(record, sensorType));
             }
         }
-        return true;
     }
 
     @Override
@@ -176,27 +166,15 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
                         int sensorId = record.readUnsignedShortLE();
                         if (sensorType == 14) {
 
-                            float latitude = record.readFloatLE();
-                            float longitude = record.readFloatLE();
-                            int speed = record.readUnsignedShortLE();
-                            double hdop = record.readUnsignedByte() / 10.0;
-                            int satellites = record.readUnsignedByte();
-                            int course = record.readUnsignedShortLE();
-                            int altitude = record.readShortLE();
+                            position.setLatitude(record.readFloatLE());
+                            position.setLongitude(record.readFloatLE());
+                            position.setSpeed(UnitsConverter.knotsFromKph(record.readUnsignedShortLE()));
 
-                            if (latitude >= -90 && latitude <= 90
-                                    && longitude >= -180 && longitude <= 180) {
-                                position.setLatitude(latitude);
-                                position.setLongitude(longitude);
-                                position.setSpeed(UnitsConverter.knotsFromKph(speed));
-                                position.set(Position.KEY_HDOP, hdop);
-                                position.set(Position.KEY_SATELLITES, satellites);
-                                position.setCourse(course);
-                                position.setAltitude(altitude);
-                            } else {
-                                LOGGER.warn("Invalid GPS coordinates lat={} lon={} from device: {}",
-                                        latitude, longitude, deviceSession.getUniqueId());
-                            }
+                        position.set(Position.KEY_HDOP, record.readUnsignedByte() / 10.0);
+                        position.set(Position.KEY_SATELLITES, record.readUnsignedByte());
+
+                            position.setCourse(record.readUnsignedShortLE());
+                            position.setAltitude(record.readShortLE());
 
                         } else {
 
@@ -204,9 +182,7 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
                                 continue;
                             }
 
-                            if (!decodeSensor(position, record, sensorType, sensorId)) {
-                                break;
-                            }
+                            decodeSensor(position, record, sensorType, sensorId);
 
                         }
                     }
