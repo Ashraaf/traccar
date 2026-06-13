@@ -160,7 +160,7 @@ public class IotmProtocolDecoder extends BaseMqttProtocolDecoder {
                             position.setLongitude(record.readFloatLE());
                             position.setSpeed(UnitsConverter.knotsFromKph(record.readUnsignedShortLE()));
 
-                        position.set(Position.KEY_HDOP, record.readUnsignedByte());
+                        position.set(Position.KEY_HDOP, record.readUnsignedByte() * 0.1);
                         position.set(Position.KEY_SATELLITES, record.readUnsignedByte());
 
                             position.setCourse(record.readUnsignedShortLE());
