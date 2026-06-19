@@ -342,6 +342,8 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
         int type = buf.readUnsignedShort();
         int attribute = buf.readUnsignedShort();
 
+        int bodyLength = BitUtil.to(attribute, 10);
+
         protocolVersion = BitUtil.check(attribute, 14) ? (int) buf.readUnsignedByte() : null;
         ByteBuf id = buf.readSlice(protocolVersion != null ? 10 : (delimiter == 0xe7 ? 7 : 6));
 
@@ -395,8 +397,6 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
 
             getLastLocation(position, null);
 
-            int bodyLength = BitUtil.to(attribute, 10);
-
             buf.readUnsignedShort(); // response serial number
 
             String result = buf.readCharSequence(bodyLength - 2, StandardCharsets.UTF_16BE).toString().trim();
@@ -441,6 +441,18 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
             }
 
             return decodeLocation2(deviceSession, buf, type);
+
+        } else if (type == MSG_LOCATION_BATCH_2 && bodyLength == 7) {
+
+            sendGeneralResponse(channel, remoteAddress, id, type, index);
+
+            Position position = new Position(getProtocolName());
+            position.setDeviceId(deviceSession.getDeviceId());
+
+            position.set(Position.KEY_BATTERY_LEVEL, buf.readUnsignedByte());
+            getLastLocation(position, readDate(buf, deviceSession.get(DeviceSession.KEY_TIMEZONE)));
+
+            return position;
 
         } else if (type == MSG_LOCATION_BATCH || type == MSG_LOCATION_BATCH_2) {
 
@@ -870,6 +882,8 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                             network.addCellTower(CellTower.from(
                                 mcc, mnc, buf.readUnsignedMedium(), buf.readUnsignedInt(), buf.readUnsignedByte()));
                         }
+                    } else if (subtype == 0xE1 && length == 2) {
+                        position.set(Position.KEY_POWER, buf.readUnsignedShort() / 10.0);
                     } else {
                         position.set(Position.KEY_DRIVER_UNIQUE_ID, String.valueOf(buf.readUnsignedInt()));
                     }
@@ -1068,7 +1082,11 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                                             buf.readCharSequence(6, StandardCharsets.US_ASCII).toString()));
                                     break;
                                 case 0x002D:
-                                    position.set(Position.KEY_BATTERY, buf.readUnsignedShort() / 1000.0);
+                                    if (extendedLength == 6) {
+                                        position.set(Position.KEY_POWER, buf.readUnsignedInt() / 1000.0);
+                                    } else {
+                                        position.set(Position.KEY_BATTERY, buf.readUnsignedShort() / 1000.0);
+                                    }
                                     break;
                                 case 0x0089:
                                     alarm = buf.readUnsignedInt();
