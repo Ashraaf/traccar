@@ -491,8 +491,9 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                 response.writeByte(calendar.get(Calendar.HOUR_OF_DAY));
                 response.writeByte(calendar.get(Calendar.MINUTE));
                 response.writeByte(calendar.get(Calendar.SECOND));
+                response.writeByte(RESULT_SUCCESS);
                 channel.writeAndFlush(new NetworkMessage(
-                        formatMessage(MSG_TERMINAL_REGISTER_RESPONSE, id, false, response), remoteAddress));
+                        formatMessage(MSG_TIME_SYNC_RESPONSE, id, false, response), remoteAddress));
             }
 
         } else if (type == MSG_ACCELERATION) {
@@ -1272,7 +1273,11 @@ public class Jt808ProtocolDecoder extends BaseProtocolDecoder {
                     }
                     break;
                 case 0xF8:
-                    position.set(Position.PREFIX_TEMP + 2, buf.readUnsignedShort() / 10.0 - 50);
+                    if (model != null && Set.of("C5", "C5L").contains(model)) {
+                        position.set(Position.KEY_STEPS, buf.readUnsignedShort());
+                    } else {
+                        position.set(Position.PREFIX_TEMP + 2, buf.readUnsignedShort() / 10.0 - 50);
+                    }
                     break;
                 case 0xFB:
                     position.set("container", buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
