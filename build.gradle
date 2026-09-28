@@ -39,7 +39,7 @@ dependencyUpdates {
 enforce {
     // noinspection UnnecessaryQualifiedReference
     rule(enforcer.rules.EnforceBytecodeVersion) { r ->
-        r.maxJdkVersion = "21"
+        r.maxJdkVersion = "25"
     }
 }
 

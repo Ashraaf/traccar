@@ -134,7 +134,7 @@
         <module name="SimplifyBooleanReturn"/>
         <module name="UnnecessaryNullCheckWithInstanceOf"/>
         <module name="UnusedLocalVariable">
-            <property name="jdkVersion" value="21"/>
+            <property name="jdkVersion" value="25"/>
         </module>
         <module name="UnusedPrivateField">
             <!-- Jackson accesses annotated fields through reflection. -->
