@@ -1,5 +1,7 @@
-FROM alpine AS package
+FROM public.ecr.aws/docker/library/debian:trixie-slim AS package
 ARG VERSION=master
+RUN apt-get update && apt-get install -y --no-install-recommends unzip \
+	&& rm -rf /var/lib/apt/lists/*
 COPY installers/traccar-other-$VERSION.zip /tmp/traccar.zip
 RUN unzip -qo /tmp/traccar.zip -d /traccar
 
