@@ -24,7 +24,9 @@ import org.traccar.broadcast.BroadcastService;
 import org.traccar.config.Config;
 import org.traccar.config.Keys;
 import org.traccar.database.DeviceLookupService;
+import org.traccar.database.DeviceUpdateManager;
 import org.traccar.database.NotificationManager;
+import org.traccar.helper.model.AttributeUtil;
 import org.traccar.model.BaseModel;
 import org.traccar.model.Device;
 import org.traccar.model.Event;
@@ -60,7 +62,6 @@ public class ConnectionManager implements BroadcastInterface {
 
     private final long deviceTimeout;
     private final boolean showUnknownDevices;
-    private final boolean statusEventsEnabled;
 
     private record UnknownEntry(String uniqueId, long timestamp) {}
 
@@ -72,6 +73,7 @@ public class ConnectionManager implements BroadcastInterface {
     private final Config config;
     private final CacheManager cacheManager;
     private final Storage storage;
+    private final DeviceUpdateManager deviceUpdateManager;
     private final NotificationManager notificationManager;
     private final BroadcastService broadcastService;
     private final DeviceLookupService deviceLookupService;
@@ -84,16 +86,16 @@ public class ConnectionManager implements BroadcastInterface {
     public ConnectionManager(
             Config config, CacheManager cacheManager, Storage storage,
             NotificationManager notificationManager, BroadcastService broadcastService,
-            DeviceLookupService deviceLookupService) {
+            DeviceLookupService deviceLookupService, DeviceUpdateManager deviceUpdateManager) {
         this.config = config;
         this.cacheManager = cacheManager;
         this.storage = storage;
+        this.deviceUpdateManager = deviceUpdateManager;
         this.notificationManager = notificationManager;
         this.broadcastService = broadcastService;
         this.deviceLookupService = deviceLookupService;
         deviceTimeout = config.getLong(Keys.STATUS_TIMEOUT);
         showUnknownDevices = config.getBoolean(Keys.WEB_SHOW_UNKNOWN_DEVICES);
-        statusEventsEnabled = config.getBoolean(Keys.EVENT_STATUS_ENABLE);
         broadcastService.registerListener(this);
     }
 
@@ -264,7 +266,7 @@ public class ConnectionManager implements BroadcastInterface {
             lastSeenByDeviceId.remove(deviceId);
         }
 
-        if (!status.equals(oldStatus) && statusEventsEnabled) {
+        if (!status.equals(oldStatus) && isStatusEventEnabled(deviceId)) {
             String eventType = switch (status) {
                 case Device.STATUS_ONLINE -> Event.TYPE_DEVICE_ONLINE;
                 case Device.STATUS_UNKNOWN -> Event.TYPE_DEVICE_UNKNOWN;
@@ -278,14 +280,24 @@ public class ConnectionManager implements BroadcastInterface {
         }
 
         try {
-            storage.updateObject(device, new Request(
-                    new Columns.Include("status", "lastUpdate"),
-                    new Condition.Equals("id", deviceId)));
+            var values = new HashMap<String, Object>();
+            values.put("status", status);
+            values.put("lastUpdate", device.getLastUpdate());
+            deviceUpdateManager.update(deviceId, values);
         } catch (StorageException e) {
             LOGGER.warn("Update device status error", e);
         }
 
         updateDevice(true, device);
+    }
+
+    private boolean isStatusEventEnabled(long deviceId) {
+        try {
+            return cacheManager.withDevice(deviceId,
+                    () -> AttributeUtil.lookup(cacheManager, Keys.EVENT_STATUS_ENABLE, deviceId));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public synchronized void sendKeepalive() {
